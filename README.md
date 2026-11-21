@@ -1,5 +1,11 @@
 # subtitle-kit
 
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Tests](https://img.shields.io/badge/tests-51%20passing-success)
+![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+
 零依赖的字幕处理工具箱 —— 一个纯 Python 标准库实现的命令行 + 库，处理短视频创作中最常见的字幕杂活：
 
 - **解析 / 生成**：SRT 与 WebVTT 双向转换（自动识别格式、容忍 `\r\n`、BOM、缺序号、VTT 注释块）
@@ -103,6 +109,19 @@ open("out.vtt", "w", encoding="utf-8").write(format_vtt(bilingual))
 ```bash
 python -m unittest discover -s tests
 # Ran 51 tests ... OK
+```
+
+
+## 📁 项目结构
+
+```
+subtitle-kit/
+├── LICENSE
+├── pyproject.toml
+├── samples/
+├── subtitle_kit/
+├── tests/
+└── README.md
 ```
 
 ## License
