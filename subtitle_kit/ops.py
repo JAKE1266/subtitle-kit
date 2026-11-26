@@ -75,24 +75,28 @@ def split_long(
 ) -> tuple[Subtitles, SplitPlan]:
     """拆分过长/过长的字幕条，便于阅读（每屏字数与时长的双重约束）。
 
-    时长按字符数比例分配；英文按空格断行，中文按字硬切。
+    时长按字符数比例分配；英文优先在空白边界断开，所有原始字符保持不变。
+    纯空白条目保持原样，避免拆出仅含换行的无效字幕。
     """
+    if max_chars <= 0:
+        raise ValueError("max_chars 必须为正数")
+    if max_duration_ms <= 0:
+        raise ValueError("max_duration_ms 必须为正数")
     out: list[Cue] = []
     split_count = 0
     for cue in subs.cues:
-        flat = cue.text.replace("\n", "")
-        need_by_chars = math.ceil(len(flat) / max_chars) if flat else 1
+        text = cue.text
+        need_by_chars = math.ceil(len(text) / max_chars) if text else 1
         need_by_time = math.ceil(cue.duration / max_duration_ms) if cue.duration > 0 else 1
         parts = max(need_by_chars, need_by_time)
-        if flat:
-            # 拆出的段数不超过字符数，避免产生过碎的空段
-            parts = min(parts, len(flat))
-        if parts <= 1:
-            out.append(Cue(cue.start, cue.end, cue.text))
+        if text:
+            parts = min(parts, len(text))
+        if not text.strip() or parts <= 1:
+            out.append(Cue(cue.start, cue.end, text))
             continue
         split_count += 1
-        chunks = _split_text(flat, parts)
-        total_chars = sum(len(ch) for ch in chunks) or 1
+        chunks = _split_text(text, parts)
+        total_chars = len(text)
         cursor = cue.start
         for j, ch in enumerate(chunks):
             dur = int(round(cue.duration * len(ch) / total_chars))
@@ -107,21 +111,41 @@ def split_long(
 
 
 def _split_text(text: str, parts: int) -> list[str]:
-    """把文本近似均分为 parts 段：有空格（英文）优先在空格断开，否则按字硬切。"""
+    """近似均分文本，优先在空格边界断开，且不把换行留在段首或段尾。"""
+    if parts <= 1 or not text:
+        return [text]
     size = math.ceil(len(text) / parts)
+    boundaries = [
+        i for i in range(1, len(text))
+        if text[i - 1] != "\n" and text[i] != "\n"
+    ]
     chunks: list[str] = []
-    rest = text
-    while len(chunks) < parts - 1 and len(rest) > size:
-        cut = size
-        window = rest[: size + 1]  # 只在目标长度内找空格，避免段落超长
-        space = window.rfind(" ")
-        if space >= size // 3:  # 空格太靠前时宁可靠硬切保持均匀
-            cut = space + 1
-        chunks.append(rest[:cut].strip())
-        rest = rest[cut:].strip()
-    if rest:
-        chunks.append(rest.strip())
-    return [c for c in chunks if c]
+    start = 0
+    while len(chunks) < parts - 1 and len(text) - start > size:
+        remaining_parts = parts - len(chunks) - 1
+        upper = min(start + size + 1, len(text) - remaining_parts, len(text) - 1)
+        lower = start + max(1, size // 3)
+        candidates = [i for i in boundaries if lower <= i <= upper]
+        spaced = [i for i in candidates if text[i - 1] in " \t"]
+        if spaced:
+            cut = spaced[-1]
+            end = cut
+            while end < len(text) and text[end] in " \t":
+                end += 1
+            if end < len(text) and text[end] != "\n":
+                cut = end
+        elif candidates:
+            target = start + size
+            cut = min(candidates, key=lambda i: abs(i - target))
+        else:
+            later = [i for i in boundaries if i > start]
+            if not later:
+                break
+            cut = later[0]
+        chunks.append(text[start:cut])
+        start = cut
+    chunks.append(text[start:])
+    return chunks
 
 
 def dedupe(subs: Subtitles) -> tuple[Subtitles, int]:

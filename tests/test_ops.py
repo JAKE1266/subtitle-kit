@@ -91,6 +91,58 @@ class TestSplitLong(unittest.TestCase):
             self.assertTrue(len(c.text) <= 21, c.text)
             self.assertFalse(c.text.startswith(" "))
 
+    def test_english_separator_spaces_are_preserved(self):
+        text = "the quick brown fox jumps over the lazy dog again and again"
+        subs, _ = split_long(mk([(0, 8000, text)]), max_chars=20)
+        self.assertEqual(
+            [c.text for c in subs.cues],
+            ["the quick brown fox ", "jumps over the lazy ", "dog again and again"],
+        )
+        self.assertEqual("".join(c.text for c in subs.cues), text)
+
+    def test_multiline_text_is_preserved(self):
+        text = "Hello\nworld this is a long subtitle"
+        subs, plan = split_long(mk([(0, 12_000, text)]), max_chars=12)
+        self.assertGreater(plan.after, 1)
+        self.assertEqual("".join(c.text for c in subs.cues), text)
+        self.assertTrue(any("\n" in c.text for c in subs.cues))
+        self.assertTrue(all(not c.text.startswith("\n") for c in subs.cues))
+        self.assertEqual(subs.cues[0].start, 0)
+        self.assertEqual(subs.cues[-1].end, 12_000)
+        for previous, current in zip(subs.cues, subs.cues[1:]):
+            self.assertEqual(previous.end, current.start)
+
+    def test_newline_adjacent_to_spaces_is_preserved(self):
+        text = "abc  \ndef"
+        subs, plan = split_long(mk([(0, 3000, text)]), max_chars=3)
+        self.assertEqual(plan.after, 3)
+        self.assertEqual("".join(c.text for c in subs.cues), text)
+        self.assertTrue(all(not c.text.startswith("\n") and not c.text.endswith("\n")
+                            for c in subs.cues))
+
+    def test_all_whitespace_is_preserved(self):
+        for text in ("   ", "  alpha   beta gamma delta  ", " \n "):
+            with self.subTest(text=text):
+                subs, _ = split_long(
+                    mk([(0, 12_000, text)]), max_chars=4, max_duration_ms=4000,
+                )
+                self.assertEqual("".join(c.text for c in subs.cues), text)
+                self.assertTrue(all(c.text for c in subs.cues))
+                if not text.strip():
+                    self.assertEqual(len(subs.cues), 1)
+
+    def test_empty_text_is_kept(self):
+        subs, plan = split_long(mk([(0, 12_000, "")]), max_duration_ms=4000)
+        self.assertEqual((plan.before, plan.after, plan.split_cues), (1, 1, 0))
+        self.assertEqual(subs.cues[0].text, "")
+
+    def test_invalid_limits(self):
+        subs = mk([(0, 2000, "短句")])
+        with self.assertRaises(ValueError):
+            split_long(subs, max_chars=0)
+        with self.assertRaises(ValueError):
+            split_long(subs, max_duration_ms=0)
+
     def test_no_text_loss(self):
         text = "一二三四五六七八九十" * 5
         subs, _ = split_long(mk([(0, 6000, text)]), max_chars=10)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-kit"
-version = "0.1.0"
+version = "0.1.1"
 description = "零依赖字幕工具箱：SRT/VTT 解析、时间轴位移与缩放、双语合并、长句拆分与格式互转"
 readme = "README.md"
 requires-python = ">=3.8"

@@ -24,6 +24,13 @@ from .parser import detect_format, format_srt, format_txt, format_vtt, parse_aut
 _READ_ENCODINGS = ("utf-8-sig", "utf-8", "gb18030")
 
 
+def _configure_standard_streams() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def _load(path: str) -> Subtitles:
     p = Path(path)
     if not p.exists():
@@ -112,6 +119,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _configure_standard_streams()
     args = _build_parser().parse_args(argv)
     try:
         if args.cmd == "shift":

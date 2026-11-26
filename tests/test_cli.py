@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,10 +12,10 @@ SAMPLE_VTT = ROOT / "samples" / "demo-en.vtt"
 PY = sys.executable
 
 
-def run_cli(*args, expect=0):
+def run_cli(*args, expect=0, env=None):
     r = subprocess.run(
         [PY, "-m", "subtitle_kit", *args],
-        capture_output=True, text=True, cwd=ROOT, encoding="utf-8",
+        capture_output=True, text=True, encoding="utf-8", env=env,
     )
     if r.returncode != expect:
         raise AssertionError(
@@ -94,9 +95,19 @@ class TestCli(unittest.TestCase):
         r = run_cli("shift", str(SAMPLE_SRT), "abc", "-o", str(dst), expect=2)
         self.assertIn("参数错误", r.stderr)
 
+    def test_utf8_output_under_legacy_windows_encoding(self):
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "cp1252"
+        env.pop("PYTHONUTF8", None)
+        result = subprocess.run(
+            [PY, "-m", "subtitle_kit", "stats", str(SAMPLE_SRT)],
+            capture_output=True, env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", errors="replace"))
+        self.assertIn("条数", result.stdout.decode("utf-8"))
+
     def test_version(self):
-        r = subprocess.run([PY, "-m", "subtitle_kit", "--version"],
-                           capture_output=True, text=True, cwd=ROOT, encoding="utf-8")
+        r = run_cli("--version")
         self.assertIn("subtitle-kit", r.stdout)
 
 

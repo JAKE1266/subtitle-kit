@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-51%20passing-success)
+![Tests](https://img.shields.io/badge/tests-58%20passing-success)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
@@ -11,7 +11,7 @@
 - **解析 / 生成**：SRT 与 WebVTT 双向转换（自动识别格式、容忍 `\r\n`、BOM、缺序号、VTT 注释块）
 - **时间轴调整**：整体位移（配音提前/延后）、缩放（25fps → 30fps 帧率换算）
 - **双语合并**：主轨 + 翻译轨按时间重叠自动对齐，一行中英对照
-- **长句拆分**：按每屏字数 / 每条时长双约束拆分，中文按字、英文按空格
+- **长句拆分**：按每屏字数 / 每条时长双约束拆分，中文按字、英文按空格，原始空白与换行完整保留
 - **去重 / 提净稿**：移除相邻重复条目、导出纯文本旁白稿
 - **语速体检**：统计字符/秒，标出观众跟不上的条目
 
@@ -101,14 +101,18 @@ open("out.vtt", "w", encoding="utf-8").write(format_vtt(bilingual))
 
 - **毫秒整数**：全程用 `int` 存时间，杜绝 `0.1+0.2` 式浮点漂移，序列化时才格式化
 - **宽容解析、严格生成**：解析接受缺序号/CRLF/BOM/注释块；生成永远输出合法、序号连续的标准格式
-- **拆分不丢字**：长句拆分保证所有文本字符原样保留（有专门测试覆盖）
+- **拆分不丢字**：长句拆分保证所有文本字符原样保留，包括空格、制表符和换行；纯空白条目保持原样
 - **零依赖**：`pip install subtitle-kit` 不会拉动任何包
 
 ## 运行测试
 
 ```bash
 python -m unittest discover -s tests
-# Ran 51 tests ... OK
+# Ran 58 tests ... OK
+
+python -m pip install build twine
+python -m build
+python -m twine check dist/*
 ```
 
 
@@ -116,7 +120,10 @@ python -m unittest discover -s tests
 
 ```
 subtitle-kit/
+├── .github/workflows/
 ├── LICENSE
+├── MANIFEST.in
+├── CHANGELOG.md
 ├── pyproject.toml
 ├── samples/
 ├── subtitle_kit/
